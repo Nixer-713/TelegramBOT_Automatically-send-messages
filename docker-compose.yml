@@ -1,0 +1,23 @@
+# Compose file orchestrating Stage 0 services (bot, admin).
+version: "3.9"
+services:
+  bot:
+    build: .
+    command: poetry run python -m app.bot.main
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+  admin:
+    build: .
+    command: poetry run uvicorn app.admin.main:create_admin_app --factory --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - bot
+    restart: unless-stopped

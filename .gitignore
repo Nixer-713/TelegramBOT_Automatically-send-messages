@@ -1,0 +1,37 @@
+# Project-level ignore rules for TG Auto Messenger (Lite).
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+.env
+.env.*
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Local data
+/data/app.db
+/data/*.sqlite
+*.db
+
+# Logs
+logs/
+*.log
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+coverage.xml
+
+# Docker
+*.pid

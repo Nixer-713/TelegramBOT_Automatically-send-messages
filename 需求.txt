@@ -1,0 +1,103 @@
+# 项目说明（Stage 1）
+
+Bot 实例：[`@Nix713_test_bot`](https://t.me/Nix713_test_bot)（Bot API 模式）
+
+- **目标**：按模板向不超过 5 个群/频道/私聊发送定时或手动广播通知，后续可平滑扩展。
+- **范围**：仅维护一个 Bot，消息内容由内部产生或从简单 RSS 中筛选；日推送量 < 100；暂不考虑高并发与多租户。
+- **成功标准**：上线后稳定运行 ≥ 2 周，广播成功率 ≥ 99%，核心流程（模板渲染、手动广播）具备可回归测试。
+
+---
+
+## 功能清单
+
+1. **手动广播 CLI**：支持 `broadcast` 子命令，带 `--dry-run` 预览。后续可补充 `/start`、`/status` 等命令。
+2. **模板管理**：通过 `TemplateService` 创建/更新/删除模板，支持 MarkdownV2/HTML、版本管理、覆盖文本。
+3. **发送记录（轻量）**：当前通过 stdout 日志观察，需扩展时可写入数据库。
+4. **限流与重试（预留）**：默认全局 5 秒、单 chat 10 秒；429 时根据 `retry_after` 重试，不超过 2 次。
+5. **测试套件**：`pytest` + `pytest-asyncio` 覆盖配置读取、模板 CRUD、手动广播（含 dry-run）。
+
+---
+
+## 非功能要求
+
+- 只使用 Bot API，通过 HTTPS + Token 与 Telegram 通信。
+- 运行时配置集中在 `.env`；避免在源码中硬编码 Token。
+- 保留结构化日志（后续可接入 loguru / Sentry）。
+- 代码与需求文档保持同步，关键模块提供最小单元测试。
+
+---
+
+## 技术栈
+
+- **语言**：Python 3.11
+- **依赖管理**：Poetry + `pyproject.toml`
+- **Bot SDK**：`python-telegram-bot` ≥ 21.0（异步模式）
+- **存储**：SQLite + SQLModel（文件位于 `data/app.db`）
+- **Web/后台**：暂未实现，Stage 2 可扩展 FastAPI + Jinja2/HTMX
+- **测试**：pytest、pytest-asyncio、pytest-cov
+
+---
+
+## 配置约定
+
+`.env` 示例：
+```ini
+BOT_TOKEN=8314414248:AAEecm4GKre1KmRpkE_UERfMFBblLf-9yxk  # 请妥善保管，可随时替换
+DATABASE_URL=sqlite:///data/app.db
+TIMEZONE=Asia/Shanghai
+```
+> 建议生产环境使用专门的密钥管理工具，不将真实 Token 提交到仓库。
+
+---
+
+## 目录结构
+
+```text
+app/
+  bot/
+    main.py            # 命令行入口，调用手动广播
+    broadcast.py       # 广播业务逻辑
+    handlers.py        # Telegram 指令处理占位
+    rate_limit.py      # 限速配置
+    scheduler.py       # 调度占位
+  admin/
+    main.py            # 后台占位
+    views.py
+  config.py           # 配置加载与缓存
+  db/
+    models.py         # SQLModel 表定义
+    session.py        # Engine/Session 管理
+  services/
+    templates.py      # 模板 CRUD 服务
+USAGE.md              # 使用说明
+tests/                # 自动化测试
+```
+
+---
+
+## 开发与测试流程
+
+1. `pip install poetry`（或使用 pipx）
+2. `poetry install --no-root`
+3. 复制 `.env.example` → `.env`，填入真实 Token
+4. 通过 Python shell 使用 `TemplateService` 创建模板
+5. `poetry run python -m app.bot.main broadcast --template xxx --chat-id yyy --dry-run`
+6. 检查输出后去掉 `--dry-run` 发送真实消息
+7. 开发迭代时执行 `poetry run pytest` 确认核心路径正常
+
+---
+
+## 后续扩展路线（Stage 2+）
+
+- 接入 FastAPI + Jinja2/HTMX 作为轻量后台
+- 利用 APScheduler/JobQueue 做一次性、周期性投放
+- 将发送日志写入 `deliveries` 表，支持失败重试与统计
+- 引入 Redis/Task Queue 处理高并发
+- 增加 `/start`、`/status` 等 Bot 命令回调
+
+---
+
+## 参考
+
+- Telegram Bot API 官方文档（来自 `telegram BOT api文档.docx`）
+- Bot Support 建议：Bot fully operational 后可联系 @BotSupport 调整用户名

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>TG Auto Messenger 控制台</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0b1026;
+      min-height: 100vh;
+      color: #f5f7fa;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    .animated-bg,
+    .animated-bg::before,
+    .animated-bg::after {
+      content: "";
+      position: fixed;
+      inset: -40vh -40vw;
+      background: linear-gradient(120deg, rgba(109,52,255,0.55), rgba(66,222,255,0.5), rgba(76,255,194,0.45));
+      filter: blur(80px);
+      animation: slide 45s linear infinite;
+      z-index: -2;
+    }
+    .animated-bg::before {
+      animation-duration: 60s;
+      animation-delay: -15s;
+      opacity: 0.6;
+    }
+    .animated-bg::after {
+      animation-duration: 70s;
+      animation-direction: reverse;
+      opacity: 0.4;
+    }
+    @keyframes slide {
+      0% { transform: translateX(-15%) rotate(0deg); }
+      50% { transform: translateX(15%) rotate(10deg); }
+      100% { transform: translateX(-15%) rotate(0deg); }
+    }
+    header {
+      padding: 20px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      backdrop-filter: blur(12px);
+      z-index: 2;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      letter-spacing: 0.04em;
+    }
+    nav button {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #f5f7fa;
+      padding: 10px 18px;
+      border-radius: 999px;
+      margin-left: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 200ms ease;
+    }
+    nav button.active,
+    nav button:hover {
+      background: rgba(255,255,255,0.35);
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 32px 120px;
+      gap: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card {
+      background: rgba(12,22,45,0.65);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      display: flex;
+      flex-direction: column;
+      min-height: 260px;
+      overflow: hidden;
+      backdrop-filter: blur(8px);
+    }
+    .status-bar {
+      font-size: 0.9rem;
+      opacity: 0.75;
+      margin-bottom: 12px;
+    }
+    .list {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 8px;
+      display: grid;
+      gap: 16px;
+    }
+    .empty-hint {
+      margin: auto;
+      opacity: 0.6;
+      font-size: 1.05rem;
+    }
+    .item {
+      background: rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border: 1px solid transparent;
+      transition: border 200ms ease, transform 200ms ease;
+    }
+    .item:hover {
+      border-color: rgba(255,255,255,0.25);
+      transform: translateY(-1px);
+    }
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .item-header h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tag {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .tag.sent { background: rgba(88,233,222,0.3); color: #7ef0ed; }
+    .tag.pending { background: rgba(147,92,255,0.3); color: #c7b0ff; }
+    .actions-bar {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%);
+      width: min(640px, 90vw);
+      display: flex;
+      gap: 16px;
+      z-index: 3;
+    }
+    .actions-bar button {
+      flex: 1;
+      padding: 16px;
+      border: none;
+      border-radius: 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #10132b;
+      transition: transform 150ms ease, opacity 150ms ease;
+    }
+    .actions-bar button.send { background: linear-gradient(135deg, #5cffc8, #57b6ff); }
+    .actions-bar button.delete { background: rgba(255,255,255,0.85); }
+    .actions-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .actions-bar button:active:not(:disabled) { transform: scale(0.98); }
+    .chats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .chip {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.25);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.08);
+    }
+    .chip input { accent-color: #5cffc8; }
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .history-card {
+      padding: 20px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.08);
+      min-height: 140px;
+    }
+  </style>
+</head>
+<body>
+  <div class="animated-bg"></div>
+  <div id="app">
+    <header>
+      <h1>广播控制台</h1>
+      <nav>
+        <button :class="{active: view === 'templates'}" @click="switchView('templates')">模板列表</button>
+        <button :class="{active: view === 'dashboard'}" @click="switchView('dashboard')">仪表盘</button>
+      </nav>
+    </header>
+
+    <main v-if="view === 'templates'">
+      <div class="card">
+        <div class="status-bar">模板总数：{{ templates.length }} · 待发送：{{ pendingCount }} · 已发送：{{ sentCount }}</div>
+        <div class="chats">
+          <label class="chip" v-for="chat in chats" :key="chat.chat_id">
+            <input type="checkbox" v-model="selectedChats" :value="chat.chat_id" />
+            <span>{{ chat.title }} ({{ chat.type }})</span>
+          </label>
+        </div>
+        <div class="list">
+          <template v-if="templates.length">
+            <label class="item" v-for="tpl in templates" :key="tpl.id">
+              <div class="item-header">
+                <h3>
+                  <input type="checkbox" v-model="selectedTemplates" :value="tpl.id" />
+                  {{ tpl.name }} · v{{ tpl.version }}
+                </h3>
+                <span class="tag" :class="tpl.was_sent ? 'sent' : 'pending'">
+                  {{ tpl.was_sent ? '已发送' : '待发送' }}
+                </span>
+              </div>
+              <p style="margin: 0; opacity: 0.85; white-space: pre-wrap;">{{ tpl.text }}</p>
+              <small style="opacity: 0.6;">更新时间：{{ formatDate(tpl.updated_at) }}<span v-if="tpl.sent_at"> · 发送时间：{{ formatDate(tpl.sent_at) }}</span></small>
+            </label>
+          </template>
+          <div v-else class="empty-hint">暂无模板，请先通过脚本或 API 写入。</div>
+        </div>
+      </div>
+    </main>
+
+    <main v-else>
+      <div class="card">
+        <h2 style="margin-top:0;">发送概览</h2>
+        <div class="history-grid">
+          <div class="history-card">
+            <h3>模板总数</h3>
+            <p style="font-size:2.4rem;margin:8px 0;">{{ templates.length }}</p>
+          </div>
+          <div class="history-card">
+            <h3>已发送</h3>
+            <p style="font-size:2.4rem;margin:8px 0;">{{ sentCount }}</p>
+          </div>
+          <div class="history-card">
+            <h3>待发送</h3>
+            <p style="font-size:2.4rem;margin:8px 0;">{{ pendingCount }}</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="actions-bar">
+      <button class="delete" @click="deleteSelected" :disabled="!selectedTemplates.length">批量删除</button>
+      <button class="send" @click="sendSelected" :disabled="!selectedTemplates.length || !selectedChats.length">立即发送</button>
+    </div>
+  </div>
+
+  <script>
+    const API_HOST = 'http://127.0.0.1:8000';
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          view: 'templates',
+          templates: [],
+          chats: [],
+          selectedTemplates: [],
+          selectedChats: [],
+          isLoading: false,
+          error: ''
+        };
+      },
+      computed: {
+        sentCount() {
+          return this.templates.filter(item => item.was_sent).length;
+        },
+        pendingCount() {
+          return this.templates.filter(item => !item.was_sent).length;
+        }
+      },
+      methods: {
+        switchView(target) {
+          this.view = target;
+          if (target === 'dashboard') {
+            this.fetchTemplates();
+          }
+        },
+        async fetchTemplates() {
+          try {
+            const res = await fetch(`${API_HOST}/api/templates`);
+            if (!res.ok) throw new Error(`加载模板失败: ${res.status}`);
+            const data = await res.json();
+            this.templates = data.items ?? [];
+          } catch (err) {
+            this.error = err.message;
+          }
+        },
+        async fetchChats() {
+          try {
+            const res = await fetch(`${API_HOST}/api/chats`);
+            if (!res.ok) throw new Error(`加载 chat 列表失败: ${res.status}`);
+            this.chats = await res.json();
+          } catch (err) {
+            this.error = err.message;
+          }
+        },
+        formatDate(value) {
+          if (!value) return '--';
+          return new Date(value).toLocaleString();
+        },
+        async sendSelected() {
+          if (!this.selectedTemplates.length || !this.selectedChats.length) return;
+          this.isLoading = true;
+          try {
+            await fetch(`${API_HOST}/api/templates/send`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ template_ids: this.selectedTemplates, chat_ids: this.selectedChats })
+            }).then(res => res.json()).then(data => {
+              this.templates = data.items ?? [];
+            });
+            this.selectedTemplates = [];
+          } finally {
+            this.isLoading = false;
+          }
+        },
+        async deleteSelected() {
+          if (!this.selectedTemplates.length) return;
+          this.isLoading = true;
+          try {
+            await fetch(`${API_HOST}/api/templates/delete`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ template_ids: this.selectedTemplates })
+            }).then(res => res.json()).then(data => {
+              this.templates = data.items ?? [];
+            });
+            this.selectedTemplates = [];
+          } finally {
+            this.isLoading = false;
+          }
+        }
+      },
+      async mounted() {
+        await Promise.all([this.fetchTemplates(), this.fetchChats()]);
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
